@@ -15,6 +15,8 @@ module Yesod.Contrib.League.Crud
        , getCrud
        , defaultCrudMessage
        , defaultCrudAlertMessage
+       , runCrudSite
+       , runCrudSubsite
        , CrudSubsite(..)
        , Route(..)
        ) where
@@ -47,8 +49,20 @@ type CrudCxt sub =
   , RenderMessage (CrudSubsite sub) CrudMessage
   )
 
-type SiteHandler sub = HandlerT (Site sub) IO
+type CrudEnv sub =
+  ( sub
+  , CrudMessage -> Text
+  , Route (CrudSubsite sub) -> Route (Site sub)
+  )
 
+type CrudArg1 sub a =
+  ( a -> sub
+  , a -> Route (CrudSubsite sub) -> Route (Site sub)
+  )
+
+type CrudM sub = ReaderT (CrudEnv sub) (SiteHandler sub)
+
+type SiteHandler sub = HandlerT (Site sub) IO
 type CrudHandler sub = HandlerT (CrudSubsite sub) (SiteHandler sub)
 
 -- |Widgets are specified in terms of the parent site, not the subsite.
@@ -57,6 +71,21 @@ type CrudWidget sub = WidgetT (Site sub) IO ()
 -- |Forms are specified in terms of the parent site, not the subsite.
 type CrudForm sub =
   Html -> MForm (SiteHandler sub) (FormResult (Obj sub), CrudWidget sub)
+
+runCrudSubsite :: Crud sub => CrudM sub a -> CrudHandler sub a
+runCrudSubsite crud = do
+  mr <- getMessageRender
+  r2p <- getRouteToParent
+  sub <- getCrud
+  lift $ runReaderT crud (sub, mr, r2p)
+
+runCrudSite :: Crud sub => CrudArg1 sub t -> t -> CrudM sub a -> SiteHandler sub a
+runCrudSite (mkSub, mkR) arg crud = do
+  langs <- reqLangs <$> getRequest
+  let sub = mkSub arg
+      r2p = mkR arg
+      mr  = renderMessage (CrudSubsite sub) langs
+  runReaderT crud (sub, mr, r2p)
 
 data CrudMessage
   = CrudMsgEntity
@@ -115,14 +144,10 @@ class CrudCxt sub => Crud sub where
   ------------------------------------------------------------
   -- * Widgets: override these to customize the look
 
-  crudListWidget
-    :: [Entity (Obj sub)]
-    -> CrudHandler sub (CrudWidget sub)
-
-  crudListWidget objects = do
-    sub <- getCrud
-    mr <- getMessageRender
-    r2p <- getRouteToParent
+  crudListWidget :: CrudM sub (CrudWidget sub)
+  crudListWidget = do
+    (sub, mr, r2p) <- ask
+    objects <- lift $ runDB $ crudSelect sub
     let kv obj = (entityKey obj, crudShow sub (entityVal obj))
         pairs = map kv objects
     return
@@ -222,9 +247,7 @@ class CrudCxt sub => Crud sub where
   getCrudListR :: CrudHandler sub Html
   getCrudListR = do
     mr <- getMessageRender
-    sub <- getCrud
-    objects <- lift . runDB $ crudSelect sub
-    listWidget <- crudListWidget objects
+    listWidget <- runCrudSubsite crudListWidget
     crudLayout $ do
       setTitle . toMarkup $ mr CrudMsgEntities
       listWidget
