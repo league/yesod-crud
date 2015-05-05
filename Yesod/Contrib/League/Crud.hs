@@ -51,14 +51,20 @@ type CrudForm sub =
 data CrudMessage
   = CrudMsgEntity
   | CrudMsgEntities
-  | CrudMsgNone
-  | CrudMsgCreate Text
-  | CrudMsgUpdate Text
-  | CrudMsgDelete Text
-  | CrudMsgCreated Text
-  | CrudMsgUpdated Text
-  | CrudMsgDeleted Text
-  | CrudMsgNoChanges Text
+  | CrudMsgNoEntities
+  | CrudMsgAlertCreated Text
+  | CrudMsgAlertDeleted Text
+  | CrudMsgAlertNoChanges Text
+  | CrudMsgAlertUpdated Text
+  | CrudMsgButtonDelete
+  | CrudMsgButtonSubmit
+  | CrudMsgConfirmDelete Text
+  | CrudMsgLinkCreate
+  | CrudMsgLinkDelete
+  | CrudMsgLinkUpdate
+  | CrudMsgTitleCreate Text
+  | CrudMsgTitleDelete Text
+  | CrudMsgTitleUpdate Text
 
 class CrudCxt sub => Crud sub where
   type Obj sub :: *
@@ -112,16 +118,16 @@ class CrudCxt sub => Crud sub where
     return
       [whamlet|
        $if length pairs == 0
-         <p>#{mr CrudMsgNone}
+         <p>#{mr CrudMsgNoEntities}
        $else
          <ol>
            $forall (k,s) <- pairs
              <li>
                #{s}
-               <a href=@{r2p $ crudRoute CrudUpdateR k}>edit
-               <a href=@{r2p $ crudRoute CrudDeleteR k}>delete
+               <a href=@{r2p $ crudRoute CrudUpdateR k}>#{mr CrudMsgLinkUpdate}
+               <a href=@{r2p $ crudRoute CrudDeleteR k}>#{mr CrudMsgLinkDelete}
        <p>
-         <a href=@{r2p CrudCreateR}>create
+         <a href=@{r2p CrudCreateR}>#{mr CrudMsgLinkCreate}
        |]
 
   crudFormWidget
@@ -130,12 +136,13 @@ class CrudCxt sub => Crud sub where
     -> CrudHandler sub (CrudWidget sub)
 
   crudFormWidget action (w,enc) = do
+    mr <- getMessageRender
     r2p <- getRouteToParent
     return
       [whamlet|
        <form method=post action=@{r2p action} enctype=#{enc}>
          ^{w}
-         <input type=submit value="Submit">
+         <input type=submit value=#{mr CrudMsgButtonSubmit}>
        |]
 
   crudCreateWidget :: CrudHandler sub (CrudWidget sub)
@@ -149,10 +156,11 @@ class CrudCxt sub => Crud sub where
        -> CrudHandler sub (CrudWidget sub)
 
   crudDeleteWidget (entityVal->val) = do
+    mr <- getMessageRender
     sub <- getCrud
     return [whamlet|
-            <p>Really delete #{crudShow sub val}?
-            <input type=submit value=Delete>
+            <p>#{mr $ CrudMsgConfirmDelete $ crudShow sub val}
+            <input type=submit value=#{mr CrudMsgButtonDelete}>
             |]
 
   ------------------------------------------------------------
@@ -244,7 +252,7 @@ class CrudCxt sub => Crud sub where
     r2p <- getRouteToParent
     let action = r2p . crudRoute CrudDeleteR $ entityKey objEnt
     crudLayout $ do
-      setTitle . toMarkup . mr . CrudMsgDelete $ mr CrudMsgEntity
+      setTitle . toMarkup . mr . CrudMsgTitleDelete $ mr CrudMsgEntity
       [whamlet|
        <form method=post action=@{action} enctype=#{enc}>
          ^{tokenW}
@@ -294,29 +302,35 @@ crudRoute ctor = ctor . toPathPiece
 
 defaultCrudMessage :: CrudMessage -> Text
 defaultCrudMessage m = case m of
-  CrudMsgEntity        -> "Object"
-  CrudMsgEntities      -> "Objects"
-  CrudMsgNone          -> "No objects"
-  CrudMsgCreate    obj -> "Create " <> obj
-  CrudMsgUpdate    obj -> "Update " <> obj
-  CrudMsgDelete    obj -> "Delete " <> obj
-  CrudMsgCreated   obj -> "Created " <> obj
-  CrudMsgUpdated   obj -> "Updated " <> obj
-  CrudMsgDeleted   obj -> "Deleted " <> obj
-  CrudMsgNoChanges obj -> "No changes to " <> obj
+  CrudMsgEntity              -> "Object"
+  CrudMsgEntities            -> "Objects"
+  CrudMsgNoEntities          -> "No objects"
+  CrudMsgAlertCreated   obj  -> "Created " <> obj
+  CrudMsgAlertDeleted   obj  -> "Deleted " <> obj
+  CrudMsgAlertNoChanges obj  -> "No changes to " <> obj
+  CrudMsgAlertUpdated   obj  -> "Updated " <> obj
+  CrudMsgButtonDelete        -> "Delete"
+  CrudMsgButtonSubmit        -> "Save"
+  CrudMsgConfirmDelete  obj  -> "Really delete " <> obj <> "?"
+  CrudMsgLinkCreate          -> "create"
+  CrudMsgLinkDelete          -> "delete"
+  CrudMsgLinkUpdate          -> "edit"
+  CrudMsgTitleCreate    noun -> "Create " <> noun
+  CrudMsgTitleDelete    noun -> "Delete " <> noun
+  CrudMsgTitleUpdate    noun -> "Update " <> noun
 
 routeToAlertMessage :: Route (CrudSubsite sub) -> Text -> CrudMessage
 routeToAlertMessage route obj = case route of
-  CrudCreateR     -> CrudMsgCreated obj
-  (CrudUpdateR _) -> CrudMsgUpdated obj
-  (CrudDeleteR _) -> CrudMsgDeleted obj
-  CrudListR       -> CrudMsgNoChanges obj
+  CrudCreateR     -> CrudMsgAlertCreated obj
+  (CrudUpdateR _) -> CrudMsgAlertUpdated obj
+  (CrudDeleteR _) -> CrudMsgAlertDeleted obj
+  CrudListR       -> CrudMsgAlertNoChanges obj
 
 routeToTitle :: Route (CrudSubsite sub) -> Text -> CrudMessage
 routeToTitle route obj = case route of
-  CrudCreateR     -> CrudMsgCreate obj
-  (CrudUpdateR _) -> CrudMsgUpdate obj
-  (CrudDeleteR _) -> CrudMsgDelete obj
+  CrudCreateR     -> CrudMsgTitleCreate obj
+  (CrudUpdateR _) -> CrudMsgTitleUpdate obj
+  (CrudDeleteR _) -> CrudMsgTitleDelete obj
   CrudListR       -> CrudMsgEntities
 
 defaultCrudAlertMessage
