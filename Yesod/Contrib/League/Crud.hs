@@ -138,6 +138,12 @@ class CrudCxt sub => Crud sub where
          <input type=submit value="Submit">
        |]
 
+  crudCreateWidget :: CrudHandler sub (CrudWidget sub)
+  crudCreateWidget = do
+    form <- crudMakeForm Nothing
+    widgetEnc <- lift $ generateFormPost form
+    crudFormWidget CrudCreateR widgetEnc
+
   crudDeleteWidget
     :: Entity (Obj sub)
        -> CrudHandler sub (CrudWidget sub)
