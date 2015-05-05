@@ -37,14 +37,16 @@ type CrudCxt sub =
   , RenderMessage (CrudSubsite sub) CrudMessage
   )
 
-type CrudHandler sub = HandlerT (CrudSubsite sub) (HandlerT (Site sub) IO)
+type SiteHandler sub = HandlerT (Site sub) IO
 
--- |Forms are specified in terms of the parent site, not the subsite.
-type CrudForm sub =
-  Html -> MForm (HandlerT (Site sub) IO) (FormResult (Obj sub), WidgetT (Site sub) IO ())
+type CrudHandler sub = HandlerT (CrudSubsite sub) (SiteHandler sub)
 
 -- |Widgets are specified in terms of the parent site, not the subsite.
 type CrudWidget sub = WidgetT (Site sub) IO ()
+
+-- |Forms are specified in terms of the parent site, not the subsite.
+type CrudForm sub =
+  Html -> MForm (SiteHandler sub) (FormResult (Obj sub), CrudWidget sub)
 
 data CrudMessage
   = CrudMsgEntity
@@ -70,32 +72,29 @@ class CrudCxt sub => Crud sub where
   ------------------------------------------------------------
   -- * Database operations
 
-  crudSelect :: CrudHandler sub [Entity (Obj sub)]
+  crudSelect :: sub -> YesodDB (Site sub) [Entity (Obj sub)]
+  crudSelect _ = selectList [] [LimitTo 1000]
 
-  crudSelect =
-    lift $ runDB $ selectList [] [LimitTo 1000]
+  crudInsert :: sub -> Obj sub -> YesodDB (Site sub) (Key (Obj sub))
+  crudInsert _ = insert
 
-  crudInsert :: Obj sub -> CrudHandler sub (Key (Obj sub))
-  crudInsert = lift . runDB . insert
+  crudGet :: sub -> Key (Obj sub) -> YesodDB (Site sub) (Maybe (Obj sub))
+  crudGet _ = get
 
-  crudGet :: Key (Obj sub) -> CrudHandler sub (Maybe (Obj sub))
-  crudGet = lift . runDB . get
+  crudReplace :: sub -> Key (Obj sub) -> Obj sub -> YesodDB (Site sub) (Obj sub)
+  crudReplace _ k obj = replace k obj >> return obj
 
-  crudReplace :: Key (Obj sub) -> Obj sub -> CrudHandler sub (Obj sub)
-  crudReplace k obj =
-    lift $ runDB $ replace k obj >> return obj
-
-  crudDelete :: Key (Obj sub) -> CrudHandler sub ()
-  crudDelete = lift . runDB . delete
+  crudDelete :: sub -> Key (Obj sub) -> YesodDB (Site sub) ()
+  crudDelete _ = delete
 
   ------------------------------------------------------------
   -- * Operations on the object type
 
-  crudShow :: Obj sub -> CrudHandler sub Text
-  crudShow = return . tshow
+  crudShow :: sub -> Obj sub -> Text
+  crudShow _ = tshow
 
-  crudEq :: Obj sub -> Obj sub -> CrudHandler sub Bool
-  crudEq old new = return $ old == new
+  crudEq :: sub -> Obj sub -> Obj sub -> Bool
+  crudEq _ = (==)
 
   ------------------------------------------------------------
   -- * Widgets: override these to customize the look
@@ -105,10 +104,11 @@ class CrudCxt sub => Crud sub where
     -> CrudHandler sub (CrudWidget sub)
 
   crudListWidget objects = do
+    sub <- getCrud
     mr <- getMessageRender
     r2p <- getRouteToParent
-    pairs <- forM objects $ \obj ->
-      (entityKey obj,) <$> crudShow (entityVal obj)
+    let kv obj = (entityKey obj, crudShow sub (entityVal obj))
+        pairs = map kv objects
     return
       [whamlet|
        $if length pairs == 0
@@ -148,10 +148,10 @@ class CrudCxt sub => Crud sub where
     :: Entity (Obj sub)
        -> CrudHandler sub (CrudWidget sub)
 
-  crudDeleteWidget obj = do
-    str <- crudShow $ entityVal obj
+  crudDeleteWidget (entityVal->val) = do
+    sub <- getCrud
     return [whamlet|
-            <p>Really delete #{str}?
+            <p>Really delete #{crudShow sub val}?
             <input type=submit value=Delete>
             |]
 
@@ -195,7 +195,7 @@ class CrudCxt sub => Crud sub where
     mr <- getMessageRender
     fw <- crudFormWidget action widgetEnc
     crudLayout $ do
-      setTitle $ toMarkup $ mr $ routeToTitle action $ mr CrudMsgEntity
+      setTitle . toMarkup . mr . routeToTitle action $ mr CrudMsgEntity
       fw
 
   ------------------------------------------------------------
@@ -204,10 +204,11 @@ class CrudCxt sub => Crud sub where
   getCrudListR :: CrudHandler sub Html
   getCrudListR = do
     mr <- getMessageRender
-    objects <- crudSelect
+    sub <- getCrud
+    objects <- lift . runDB $ crudSelect sub
     listWidget <- crudListWidget objects
     crudLayout $ do
-      setTitle $ toMarkup $ mr CrudMsgEntities
+      setTitle . toMarkup $ mr CrudMsgEntities
       listWidget
 
   getCrudCreateR :: CrudHandler sub Html
@@ -218,11 +219,12 @@ class CrudCxt sub => Crud sub where
 
   postCrudCreateR :: CrudHandler sub Html
   postCrudCreateR = do
+    sub <- getCrud
     form <- crudMakeForm Nothing
     ((result, w), enc) <- lift $ runFormPost form
     case result of
       FormSuccess obj -> do
-        kOpt <- try $ crudInsert obj
+        kOpt <- try . lift . runDB $ crudInsert sub obj
         case kOpt of
          Left (e :: SomeException) ->
            crudAlert CrudCreateR (Left e)
@@ -235,13 +237,14 @@ class CrudCxt sub => Crud sub where
   getCrudDeleteR :: Text -> CrudHandler sub Html
   getCrudDeleteR arg = do
     mr <- getMessageRender
-    objEnt <- entity404 arg
-    (tokenW, enc) <- lift $ generateFormPost $ renderDivs $ pure ()
+    sub <- getCrud
+    objEnt <- lift . runDB $ entity404 sub arg
+    (tokenW, enc) <- lift . generateFormPost . renderDivs $ pure ()
     confirmW <- crudDeleteWidget objEnt
     r2p <- getRouteToParent
-    let action = r2p $ crudRoute CrudDeleteR $ entityKey objEnt
+    let action = r2p . crudRoute CrudDeleteR $ entityKey objEnt
     crudLayout $ do
-      setTitle $ toMarkup $ mr $ CrudMsgDelete $ mr CrudMsgEntity
+      setTitle . toMarkup . mr . CrudMsgDelete $ mr CrudMsgEntity
       [whamlet|
        <form method=post action=@{action} enctype=#{enc}>
          ^{tokenW}
@@ -250,32 +253,36 @@ class CrudCxt sub => Crud sub where
 
   postCrudDeleteR :: Text -> CrudHandler sub Html
   postCrudDeleteR arg = do
-    Entity objId obj <- entity404 arg
-    crudDelete objId
+    sub <- getCrud
+    obj <- lift . runDB $ do
+      Entity objId obj <- entity404 sub arg
+      crudDelete sub objId
+      return obj
     crudAlert (CrudDeleteR arg) (Right obj)
     crudGotoNextPage Nothing
 
   getCrudUpdateR :: Text -> CrudHandler sub Html
   getCrudUpdateR arg = do
-    Entity _ obj <- entity404 arg
+    sub <- getCrud
+    Entity _ obj <- lift . runDB $ entity404 sub arg
     form <- crudMakeForm (Just obj)
     widgetEnc <- lift $ generateFormPost form
     crudFormLayout (CrudUpdateR arg) widgetEnc
 
   postCrudUpdateR :: Text -> CrudHandler sub Html
   postCrudUpdateR arg = do
-    Entity objId obj <- entity404 arg
+    sub <- getCrud
+    Entity objId obj <- lift . runDB $ entity404 sub arg
     form <- crudMakeForm (Just obj)
     ((result, w), enc) <- lift $ runFormPost form
     case result of
       FormSuccess newObj -> do
-        eq <- crudEq obj newObj
-        if eq
+        if crudEq sub obj newObj
           then do
             crudAlert CrudListR (Right obj)
             crudGotoNextPage (Just objId)
           else do
-            objOrExn <- try $ crudReplace objId newObj
+            objOrExn <- try . lift . runDB $ crudReplace sub objId newObj
             crudAlert (CrudUpdateR arg) objOrExn
             when (isRight objOrExn) $
               crudGotoNextPage (Just objId)
@@ -319,9 +326,10 @@ defaultCrudAlertMessage
      -> CrudHandler sub Html
 
 defaultCrudAlertMessage route result = do
-  s <- either (return . tshow) crudShow $ result
   mr <- getMessageRender
-  return $ toMarkup $ mr $ routeToAlertMessage route s
+  sub <- getCrud
+  return . toMarkup . mr . routeToAlertMessage route $
+    either tshow (crudShow sub) result
 
 getCrud :: Crud sub => CrudHandler sub sub
 getCrud = unCrud <$> getYesod
@@ -329,10 +337,10 @@ getCrud = unCrud <$> getYesod
 maybe404 :: MonadHandler m => Maybe a -> m a
 maybe404 = maybe notFound return
 
-entity404 :: Crud sub => Text -> CrudHandler sub (Entity (Obj sub))
-entity404 arg = do
+entity404 :: Crud sub => sub -> Text -> YesodDB (Site sub) (Entity (Obj sub))
+entity404 sub arg = do
   objId <- maybe404  $  fromPathPiece arg
-  obj   <- maybe404 =<< crudGet objId
+  obj   <- maybe404 =<< crudGet sub objId
   return $ Entity objId obj
 
 instance (Crud sub, Site sub ~ site)
