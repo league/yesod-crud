@@ -9,12 +9,13 @@ You should import 'Yesod.Contrib.League.Crud' instead.
 module Yesod.Contrib.League.Crud.Data where
 
 import ClassyPrelude.Yesod
+import Yesod.Routes.TH.Types
 
-data CrudSubsite sub = CrudSubsite { unCrud :: sub }
-
-mkYesodSubData "CrudSubsite sub" [parseRoutes|
-/             CrudListR     GET
-/create       CrudCreateR   GET POST
-/update/#Text CrudUpdateR   GET POST
-/delete/#Text CrudDeleteR   GET POST
-|]
+resourcesCrudSubsite :: [ResourceTree String]
+resourcesCrudSubsite =
+  [parseRoutes|
+  /                CrudListR     GET
+  /create          CrudCreateR   GET POST
+  /update/#Key-sub CrudUpdateR   GET POST
+  /delete/#Key-sub CrudDeleteR   GET POST
+  |]

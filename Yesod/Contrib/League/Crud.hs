@@ -7,12 +7,12 @@ Maintainer: league@contrapunctus.net
 -}
 module Yesod.Contrib.League.Crud
        ( Crud(..)
+       , CrudId(..)
        , CrudMessage(..)
        , CrudHandler
        , CrudForm
        , CrudWidget
        , getCrud
-       , crudRoute
        , defaultCrudMessage
        , defaultCrudAlertMessage
        , CrudSubsite(..)
@@ -24,13 +24,23 @@ import Data.Either (isRight)
 import Text.Blaze (toMarkup)
 import Yesod.Contrib.League.Crud.Data
 
+data CrudSubsite sub = CrudSubsite { unCrud :: sub }
+
+class ( Eq (ObjId sub)
+      , Read (ObjId sub)
+      , Show (ObjId sub)
+      , PathPiece (ObjId sub)
+      ) => CrudId sub where
+  type ObjId sub :: *
+
 type CrudCxt sub =
   ( Yesod (Site sub)
   , YesodPersist (Site sub)
   , PersistEntity (Obj sub)
   , PersistQuery (YesodPersistBackend (Site sub))
   , PersistEntityBackend (Obj sub) ~ YesodPersistBackend (Site sub)
-  , PathPiece (Key (Obj sub))
+  , CrudId sub
+  , Key (Obj sub) ~ ObjId sub
   , Show (Obj sub)
   , Eq (Obj sub)
   , RenderMessage (Site sub) FormMessage
@@ -81,16 +91,16 @@ class CrudCxt sub => Crud sub where
   crudSelect :: sub -> YesodDB (Site sub) [Entity (Obj sub)]
   crudSelect _ = selectList [] [LimitTo 1000]
 
-  crudInsert :: sub -> Obj sub -> YesodDB (Site sub) (Key (Obj sub))
+  crudInsert :: sub -> Obj sub -> YesodDB (Site sub) (ObjId sub)
   crudInsert _ = insert
 
-  crudGet :: sub -> Key (Obj sub) -> YesodDB (Site sub) (Maybe (Obj sub))
+  crudGet :: sub -> ObjId sub -> YesodDB (Site sub) (Maybe (Obj sub))
   crudGet _ = get
 
-  crudReplace :: sub -> Key (Obj sub) -> Obj sub -> YesodDB (Site sub) (Obj sub)
+  crudReplace :: sub -> ObjId sub -> Obj sub -> YesodDB (Site sub) (Obj sub)
   crudReplace _ k obj = replace k obj >> return obj
 
-  crudDelete :: sub -> Key (Obj sub) -> YesodDB (Site sub) ()
+  crudDelete :: sub -> ObjId sub -> YesodDB (Site sub) ()
   crudDelete _ = delete
 
   ------------------------------------------------------------
@@ -124,8 +134,8 @@ class CrudCxt sub => Crud sub where
            $forall (k,s) <- pairs
              <li>
                #{s}
-               <a href=@{r2p $ crudRoute CrudUpdateR k}>#{mr CrudMsgLinkUpdate}
-               <a href=@{r2p $ crudRoute CrudDeleteR k}>#{mr CrudMsgLinkDelete}
+               <a href=@{r2p $ CrudUpdateR k}>#{mr CrudMsgLinkUpdate}
+               <a href=@{r2p $ CrudDeleteR k}>#{mr CrudMsgLinkDelete}
        <p>
          <a href=@{r2p CrudCreateR}>#{mr CrudMsgLinkCreate}
        |]
@@ -167,13 +177,13 @@ class CrudCxt sub => Crud sub where
   -- * Navigation and alerts
 
   crudNextPage
-    :: Maybe (Key (Obj sub))
+    :: Maybe (ObjId sub)
     -> CrudHandler sub (Route (Site sub))
 
   crudNextPage _ = getRouteToParent <*> pure CrudListR
 
   crudGotoNextPage
-    :: Maybe (Key (Obj sub))
+    :: Maybe (ObjId sub)
     -> CrudHandler sub a
 
   crudGotoNextPage mk = crudNextPage mk >>= lift . redirect
@@ -242,45 +252,42 @@ class CrudCxt sub => Crud sub where
       _ -> pure ()
     crudFormLayout CrudCreateR (w, enc)
 
-  getCrudDeleteR :: Text -> CrudHandler sub Html
-  getCrudDeleteR arg = do
+  getCrudDeleteR :: ObjId sub -> CrudHandler sub Html
+  getCrudDeleteR objId = do
     mr <- getMessageRender
     sub <- getCrud
-    objEnt <- lift . runDB $ entity404 sub arg
+    obj <- lift . runDB $ crudGet sub objId >>= maybe404
     (tokenW, enc) <- lift . generateFormPost . renderDivs $ pure ()
-    confirmW <- crudDeleteWidget objEnt
+    confirmW <- crudDeleteWidget $ Entity objId obj
     r2p <- getRouteToParent
-    let action = r2p . crudRoute CrudDeleteR $ entityKey objEnt
     crudLayout $ do
       setTitle . toMarkup . mr . CrudMsgTitleDelete $ mr CrudMsgEntity
       [whamlet|
-       <form method=post action=@{action} enctype=#{enc}>
+       <form method=post action=@{r2p $ CrudDeleteR objId} enctype=#{enc}>
          ^{tokenW}
          ^{confirmW}
        |]
 
-  postCrudDeleteR :: Text -> CrudHandler sub Html
-  postCrudDeleteR arg = do
+  postCrudDeleteR :: ObjId sub -> CrudHandler sub Html
+  postCrudDeleteR objId = do
     sub <- getCrud
-    obj <- lift . runDB $ do
-      Entity objId obj <- entity404 sub arg
-      crudDelete sub objId
-      return obj
-    crudAlert (CrudDeleteR arg) (Right obj)
+    obj <- lift . runDB $ crudGet sub objId >>= maybe404
+    lift . runDB $ crudDelete sub objId
+    crudAlert (CrudDeleteR objId) (Right obj)
     crudGotoNextPage Nothing
 
-  getCrudUpdateR :: Text -> CrudHandler sub Html
-  getCrudUpdateR arg = do
+  getCrudUpdateR :: ObjId sub -> CrudHandler sub Html
+  getCrudUpdateR objId = do
     sub <- getCrud
-    Entity _ obj <- lift . runDB $ entity404 sub arg
+    obj <- lift . runDB $ crudGet sub objId >>= maybe404
     form <- crudMakeForm (Just obj)
     widgetEnc <- lift $ generateFormPost form
-    crudFormLayout (CrudUpdateR arg) widgetEnc
+    crudFormLayout (CrudUpdateR objId) widgetEnc
 
-  postCrudUpdateR :: Text -> CrudHandler sub Html
-  postCrudUpdateR arg = do
+  postCrudUpdateR :: ObjId sub -> CrudHandler sub Html
+  postCrudUpdateR objId = do
     sub <- getCrud
-    Entity objId obj <- lift . runDB $ entity404 sub arg
+    obj <- lift . runDB $ crudGet sub objId >>= maybe404
     form <- crudMakeForm (Just obj)
     ((result, w), enc) <- lift $ runFormPost form
     case result of
@@ -291,14 +298,11 @@ class CrudCxt sub => Crud sub where
             crudGotoNextPage (Just objId)
           else do
             objOrExn <- try . lift . runDB $ crudReplace sub objId newObj
-            crudAlert (CrudUpdateR arg) objOrExn
+            crudAlert (CrudUpdateR objId) objOrExn
             when (isRight objOrExn) $
               crudGotoNextPage (Just objId)
       _ -> pure ()
-    crudFormLayout (CrudUpdateR arg) (w, enc)
-
-crudRoute :: PathPiece k => (Text -> r) -> k -> r
-crudRoute ctor = ctor . toPathPiece
+    crudFormLayout (CrudUpdateR objId) (w, enc)
 
 defaultCrudMessage :: CrudMessage -> Text
 defaultCrudMessage m = case m of
@@ -351,11 +355,28 @@ getCrud = unCrud <$> getYesod
 maybe404 :: MonadHandler m => Maybe a -> m a
 maybe404 = maybe notFound return
 
-entity404 :: Crud sub => sub -> Text -> YesodDB (Site sub) (Entity (Obj sub))
-entity404 sub arg = do
-  objId <- maybe404  $  fromPathPiece arg
-  obj   <- maybe404 =<< crudGet sub objId
-  return $ Entity objId obj
+instance CrudId sub => RenderRoute (CrudSubsite sub) where
+  data Route (CrudSubsite sub)
+    = CrudListR
+    | CrudCreateR
+    | CrudUpdateR (ObjId sub)
+    | CrudDeleteR (ObjId sub)
+
+  renderRoute CrudListR = ([], [])
+  renderRoute CrudCreateR = (["create"], [])
+  renderRoute (CrudUpdateR k) = (["update", toPathPiece k], [])
+  renderRoute (CrudDeleteR k) = (["delete", toPathPiece k], [])
+
+deriving instance Eq   (ObjId sub) => Eq   (Route (CrudSubsite sub))
+deriving instance Read (ObjId sub) => Read (Route (CrudSubsite sub))
+deriving instance Show (ObjId sub) => Show (Route (CrudSubsite sub))
+
+instance CrudId sub => ParseRoute (CrudSubsite sub) where
+  parseRoute ([           ], _) = Just CrudListR
+  parseRoute (["create"   ], _) = Just CrudCreateR
+  parseRoute (["update", k], _) = CrudUpdateR <$> fromPathPiece k
+  parseRoute (["delete", k], _) = CrudDeleteR <$> fromPathPiece k
+  parseRoute _ = Nothing
 
 instance (Crud sub, Site sub ~ site)
          => YesodSubDispatch (CrudSubsite sub) (HandlerT site IO) where
