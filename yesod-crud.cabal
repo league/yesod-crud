@@ -17,8 +17,10 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Yesod.Contrib.League.Crud
+  other-modules:       Yesod.Contrib.League.Crud.Data
   hs-source-dirs:      .
   default-language:    Haskell2010
+  ghc-options:        -Wall -fwarn-tabs -O2
   extensions:          TemplateHaskell
                        ConstraintKinds
                        FlexibleContexts
