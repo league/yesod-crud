@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances, ConstraintKinds #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-|
 Module: Yesod.Contrib.League.Crud
