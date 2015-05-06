@@ -18,9 +18,13 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Yesod.Contrib.League.Crud
   other-modules:       Yesod.Contrib.League.Crud.Data
+                       Yesod.Contrib.League.Crud.Messages
+                       Yesod.Contrib.League.Crud.Monad
+                       Yesod.Contrib.League.Crud.Routes
+                       Yesod.Contrib.League.Crud.Types
   hs-source-dirs:      .
   default-language:    Haskell2010
-  ghc-options:        -Wall -fwarn-tabs -O2
+  ghc-options:        -Wall -fwarn-tabs -fno-warn-orphans -O2
   default-extensions:  TemplateHaskell
                        ConstraintKinds
                        FlexibleContexts
@@ -38,3 +42,4 @@ library
                      , blaze-markup          >= 0.7  && < 0.8
                      , classy-prelude-yesod  >= 0.11 && < 0.12
                      , yesod-core            >= 1.4  && < 1.5
+                     , monad-control         >= 1.0  && < 1.1

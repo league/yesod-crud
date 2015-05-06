@@ -1,21 +1,54 @@
-{-|
-Module: Yesod.Contrib.League.Crud.Data
-Description: Internal routes and foundation type for Yesod CRUD subsite
-Copyright: ©2015 Christopher League
-Maintainer: league@contrapunctus.net
-
-You should import 'Yesod.Contrib.League.Crud' instead.
--}
 module Yesod.Contrib.League.Crud.Data where
 
 import ClassyPrelude.Yesod
-import Yesod.Routes.TH.Types
+import Yesod.Contrib.League.Crud.Types
+import Yesod.Contrib.League.Crud.Monad
 
-resourcesCrudSubsite :: [ResourceTree String]
-resourcesCrudSubsite =
-  [parseRoutes|
-  /                CrudListR     GET
-  /create          CrudCreateR   GET POST
-  /update/#Key-sub CrudUpdateR   GET POST
-  /delete/#Key-sub CrudDeleteR   GET POST
-  |]
+class CrudTypes sub => CrudData sub where
+  crudSelect :: CrudM sub [Ent sub]
+  crudInsert :: Obj sub -> CrudM sub (ObjId sub)
+  crudGet :: ObjId sub -> CrudM sub (Maybe (Obj sub))
+  crudReplace :: ObjId sub -> Obj sub -> CrudM sub ()
+  crudDelete :: ObjId sub -> CrudM sub ()
+
+type CrudPersist sub =
+  ( YesodPersist (Site sub)
+  , PersistEntity (Obj sub)
+  , PersistEntityBackend (Obj sub) ~ YesodPersistBackend (Site sub)
+  , PersistQuery (YesodPersistBackend (Site sub))
+  , ObjId sub ~ Key (Obj sub)
+  )
+
+crudRunDB :: CrudPersist sub => YesodDB (Site sub) a -> CrudM sub a
+crudRunDB = liftHandlerT . runDB
+
+entityPair :: Entity t -> (Key t, t)
+entityPair (Entity k v) = (k, v)
+
+crudSelectList
+  :: CrudPersist sub
+     => [Filter (Obj sub)]
+     -> [SelectOpt (Obj sub)]
+     -> CrudM sub [Ent sub]
+
+crudSelectList filters opts =
+  crudRunDB $ map entityPair <$> selectList filters opts
+
+data CrudPersistDefaults sub =
+  CrudPersistDefaults
+  { crudSelectP :: CrudM sub [Ent sub]
+  , crudInsertP :: Obj sub -> CrudM sub (ObjId sub)
+  , crudGetP :: ObjId sub -> CrudM sub (Maybe (Obj sub))
+  , crudReplaceP :: ObjId sub -> Obj sub -> CrudM sub ()
+  , crudDeleteP :: ObjId sub -> CrudM sub ()
+  }
+
+crudPersist :: CrudPersist sub => CrudPersistDefaults sub
+crudPersist =
+  CrudPersistDefaults
+  { crudSelectP = crudSelectList [] [LimitTo 1000]
+  , crudInsertP = crudRunDB . insert
+  , crudGetP = crudRunDB . get
+  , crudReplaceP = \k -> crudRunDB . replace k
+  , crudDeleteP = crudRunDB . delete
+  }
