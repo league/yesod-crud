@@ -28,6 +28,11 @@ $newline never
         <h1>
           <a href=@{HomeR}>Yesod CRUD Example
       <div id="main" role="main">
+        <ol .breadcrumb>
+          $forall c <- snd crumbs
+            <li>
+              <a href=@{fst c}>#{snd c}
+          <li .active>#{fst crumbs}
         <h2>#{pageTitle pc}
         ^{pageBody pc}
       <footer>

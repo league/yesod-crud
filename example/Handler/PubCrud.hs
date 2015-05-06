@@ -39,9 +39,8 @@ instance Crud PubCrud where
   getCrudListR = runCrudSubsite $ do
     lw <- crudListWidget
     PubCrud userId <- getCrud
-    user <- maybe notFound return =<< (crudRunDB $ get userId)
-    let name = fromMaybe (userIdent user) (userFullName user)
-    $(logInfo) $ "Loading pubs for " <> name
+    user <- crudRunDB $ get404 userId
+    $(logInfo) $ "Loading pubs for " <> userName user
     crudLayout $ do
-      setTitle $ toHtml $ "Publications for " <> name
+      setTitle $ toHtml $ "Publications for " <> userName user
       lw

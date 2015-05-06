@@ -103,6 +103,7 @@ instance Yesod App where
     defaultLayout widget = do
         master <- getYesod
         mmsg <- getMessage
+        crumbs <- breadcrumbs
 
         -- We break up the default layout into two components:
         -- default-layout is the contents of the body tag, and
@@ -189,6 +190,20 @@ instance YesodAuth App where
     authHttpManager = getHttpManager
 
 instance YesodAuthPersist App
+
+instance YesodBreadcrumbs App where
+  breadcrumb (UserCrudR CrudListR) = return ("Users", Just HomeR)
+  breadcrumb (UserCrudR (CrudDeleteR uid)) = return ("Delete", Just (PubCrudR uid CrudListR))
+  breadcrumb (UserCrudR (CrudUpdateR uid)) = return ("Update", Just (PubCrudR uid CrudListR))
+  breadcrumb (PubCrudR uid CrudListR) = do
+    u <- runDB $ get404 uid
+    return (userName u, Just (UserCrudR CrudListR))
+  breadcrumb (PubCrudR uid CrudCreateR) = return ("Add publication", Just (PubCrudR uid CrudListR))
+  breadcrumb (PubCrudR uid (CrudUpdateR _)) = return ("Edit publication", Just (PubCrudR uid CrudListR))
+  breadcrumb (PubCrudR uid (CrudDeleteR _)) = return ("Remove publication", Just (PubCrudR uid CrudListR))
+  breadcrumb (LogCrudR CrudListR) = return ("Log entries", Just HomeR)
+  breadcrumb (LogCrudR (CrudDeleteR _)) = return ("Delete", Just (LogCrudR CrudListR))
+  breadcrumb _ = return ("Home", Nothing)
 
 -- This instance is required to use forms. You can modify renderMessage to
 -- achieve customized and internationalized form validation messages.
