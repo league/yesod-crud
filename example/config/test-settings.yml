@@ -1,0 +1,2 @@
+database:
+  database: yesod-crud-example_test.sqlite3
