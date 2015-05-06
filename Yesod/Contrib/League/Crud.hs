@@ -117,6 +117,9 @@ class ( CrudTypes sub
   crudShow :: Obj sub -> CrudM sub Text
   crudEq :: Obj sub -> Obj sub -> CrudM sub Bool
 
+  crudShowHtml :: Obj sub -> CrudM sub Html
+  crudShowHtml = fmap toHtml . crudShow
+
   ------------------------------------------------------------
   -- * Widgets: override these to customize the look
 
@@ -125,7 +128,7 @@ class ( CrudTypes sub
     mr <- getMessenger
     r2p <- getRouter
     objects <- crudSelect
-    let kv (objId, obj) = (objId,) <$> crudShow obj
+    let kv (objId, obj) = (objId,) <$> crudShowHtml obj
     pairs <- mapM kv objects
     return
       [whamlet|

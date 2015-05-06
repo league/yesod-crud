@@ -21,7 +21,18 @@ instance Crud PubCrud where
     crudSelectList [PublicationAuthor ==. userId]
       [Desc PublicationYear, Asc PublicationTitle]
 
-  crudShow = return . tshow
+  crudShow = return . publicationTitle
+
+  crudShowHtml p =
+    withUrlRenderer
+    [hamlet|
+     $maybe u <- publicationUrl p
+       <a href=#{u} target=_blank>#{publicationTitle p}
+     $nothing
+       #{publicationTitle p}
+     $maybe y <- publicationYear p
+       \ (#{y})
+     |]
 
   crudEq u v = return $ u == v
 
