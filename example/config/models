@@ -1,6 +1,8 @@
 User
     ident Text
     password Text Maybe
+    fullName Text Maybe
+    isAdmin Bool
     UniqueUser ident
     deriving Typeable Show Eq
 

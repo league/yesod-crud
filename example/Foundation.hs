@@ -140,6 +140,8 @@ instance YesodAuth App where
                 fmap Just $ insert User
                     { userIdent = credsIdent creds
                     , userPassword = Nothing
+                    , userFullName = Nothing
+                    , userIsAdmin = False
                     }
 
     -- You can add other plugins like BrowserID, email or OAuth here

@@ -22,3 +22,10 @@ instance Crud UserCrud where
     return $ renderDivs $ User
     <$> areq textField "User name" (userIdent <$> uOpt)
     <*> aopt passwordField "Password" (userPassword <$> uOpt)
+    <*> aopt textField "Full name" (userFullName <$> uOpt)
+    <*> areq checkBoxField "Administrator" (userIsAdmin <$> uOpt)
+
+  crudListWidget = do
+    users <- crudSelect
+    createW <- crudCreateWidget
+    return $(widgetFile "user-list")

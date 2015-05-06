@@ -1,0 +1,12 @@
+.glyphicon-remove {
+    color: #cd0000;
+}
+.glyphicon-pencil {
+    color: blue
+}
+.glyphicon-ok-circle {
+    color: green;
+}
+.glyphicon-ban-circle {
+    color: #8b1a1a;
+}
