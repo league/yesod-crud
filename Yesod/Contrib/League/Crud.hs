@@ -128,12 +128,6 @@ class ( CrudData sub
 
   crudNextPage _ = getRouter <*> pure CrudListR
 
-  crudGotoNextPage
-    :: Maybe (ObjId sub)
-    -> CrudM sub a
-
-  crudGotoNextPage mk = crudNextPage mk >>= redirect
-
   crudAlert
     :: Route (CrudSubsite sub)
     -> Either SomeException (Obj sub)
@@ -191,7 +185,7 @@ class ( CrudData sub
            crudAlert CrudCreateR (Left e)
          Right objId -> do
            crudAlert CrudCreateR (Right obj)
-           crudGotoNextPage (Just objId)
+           crudNextPage (Just objId) >>= redirect
       _ -> pure ()
     crudFormLayout CrudCreateR (w, enc)
 
@@ -215,7 +209,7 @@ class ( CrudData sub
     obj <- crudGet objId >>= maybe404
     crudDelete objId
     crudAlert (CrudDeleteR objId) (Right obj)
-    crudGotoNextPage Nothing
+    crudNextPage Nothing >>= redirect
 
   getCrudUpdateR :: ObjId sub -> CrudHandler sub Html
   getCrudUpdateR objId = runCrudSubsite $ do
@@ -235,12 +229,12 @@ class ( CrudData sub
         if eq
           then do
             crudAlert CrudListR (Right obj)
-            crudGotoNextPage (Just objId)
+            crudNextPage (Just objId) >>= redirect
           else do
             unitOrExn <- try $ crudReplace objId newObj
             crudAlert (CrudUpdateR objId) (const newObj <$> unitOrExn)
             when (isRight unitOrExn) $
-              crudGotoNextPage (Just objId)
+              crudNextPage (Just objId) >>= redirect
       _ -> pure ()
     crudFormLayout (CrudUpdateR objId) (w, enc)
 
