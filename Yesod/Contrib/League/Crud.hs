@@ -373,7 +373,7 @@ data CrudEnv sub =
 newtype CrudM sub a =
   CrudM
   { runCrudM :: ReaderT (CrudEnv sub) (SiteHandler sub) a
-  } deriving (Functor, Applicative, Monad, MonadIO,
+  } deriving (Functor, Applicative, Monad, MonadIO, MonadLogger,
               MonadBase IO, MonadThrow, MonadResource)
 
 instance MonadHandler (CrudM sub) where
