@@ -398,17 +398,14 @@ runCrudSubsite crud = do
 
 runCrudSite
   :: RenderMessage (CrudSubsite sub) CrudMessage
-     => (t-> sub)
-     -> (t -> Route (CrudSubsite sub) -> Route (Site sub))
-     -> t
+     => sub
+     -> (Route (CrudSubsite sub) -> Route (Site sub))
      -> CrudM sub a
      -> SiteHandler sub a
 
-runCrudSite mkSub mkR arg crud = do
+runCrudSite sub r2p crud = do
   langs <- reqLangs <$> getRequest
-  let sub = mkSub arg
-      r2p = mkR arg
-      mr  = renderMessage (CrudSubsite sub) langs
+  let mr  = renderMessage (CrudSubsite sub) langs
   runReaderT (runCrudM crud) $ CrudEnv sub mr r2p
 
 getCrud :: CrudM sub sub
