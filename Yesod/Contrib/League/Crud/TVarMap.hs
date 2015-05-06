@@ -13,12 +13,12 @@ import           Yesod.Contrib.League.Crud
 import           Yesod.Core
 
 newtype CrudTVarKey =
-  CrudTKey UUID
+  CrudTKey { crudUUID :: UUID }
   deriving (Eq, Ord, Read, Show, Random)
 
 instance PathPiece CrudTVarKey where
-  toPathPiece = tshow
-  fromPathPiece = readMay
+  toPathPiece = tshow . crudUUID
+  fromPathPiece = fmap CrudTKey . readMay
 
 type CrudTVarMap sub = Map CrudTVarKey (Obj sub)
 
