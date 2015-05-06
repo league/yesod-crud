@@ -82,8 +82,6 @@ instance (Crud sub, Site sub ~ site)
 
 class ( CrudTypes sub
       , Yesod (Site sub)
-      , Show (Obj sub)
-      , Eq (Obj sub)
       , RenderMessage (Site sub) FormMessage
       , RenderMessage (CrudSubsite sub) CrudMessage
       ) => Crud sub where
@@ -117,10 +115,7 @@ class ( CrudTypes sub
   -- * Operations on the object type
 
   crudShow :: Obj sub -> CrudM sub Text
-  crudShow = return . tshow
-
   crudEq :: Obj sub -> Obj sub -> CrudM sub Bool
-  crudEq x y = return $ x == y
 
   ------------------------------------------------------------
   -- * Widgets: override these to customize the look

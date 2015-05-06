@@ -18,6 +18,8 @@ instance Crud UserCrud where
 
   crudShow = return . userIdent
 
+  crudEq u v = return $ u == v
+
   crudMakeForm uOpt =
     return $ renderDivs $ User
     <$> areq textField "User name" (userIdent <$> uOpt)
