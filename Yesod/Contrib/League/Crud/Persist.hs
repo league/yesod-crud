@@ -1,17 +1,15 @@
-module Yesod.Contrib.League.Crud.Data where
+module Yesod.Contrib.League.Crud.Persist
+       ( crudRunDB
+       , crudPersistDefaults
+       , crudEntPair
+       , crudSelectList
+       ) where
 
-import ClassyPrelude.Yesod
-import Yesod.Contrib.League.Crud.Types
-import Yesod.Contrib.League.Crud.Monad
-
-data CrudDB sub =
-  CrudDB
-  { crudSelect' :: CrudM sub [Ent sub]
-  , crudInsert' :: Obj sub -> CrudM sub (ObjId sub)
-  , crudGet' :: ObjId sub -> CrudM sub (Maybe (Obj sub))
-  , crudReplace' :: ObjId sub -> Obj sub -> CrudM sub ()
-  , crudDelete' :: ObjId sub -> CrudM sub ()
-  }
+import ClassyPrelude
+import Database.Persist
+import Yesod.Contrib.League.Crud
+import Yesod.Core
+import Yesod.Persist
 
 type CrudPersist sub =
   ( YesodPersist (Site sub)
@@ -24,8 +22,8 @@ type CrudPersist sub =
 crudRunDB :: CrudPersist sub => YesodDB (Site sub) a -> CrudM sub a
 crudRunDB = liftHandlerT . runDB
 
-entityPair :: Entity t -> (Key t, t)
-entityPair (Entity k v) = (k, v)
+crudEntPair :: Entity t -> (Key t, t)
+crudEntPair (Entity k v) = (k, v)
 
 crudSelectList
   :: CrudPersist sub
@@ -34,7 +32,7 @@ crudSelectList
      -> CrudM sub [Ent sub]
 
 crudSelectList filters opts =
-  crudRunDB $ map entityPair <$> selectList filters opts
+  crudRunDB $ map crudEntPair <$> selectList filters opts
 
 crudPersistDefaults :: CrudPersist sub => CrudDB sub
 crudPersistDefaults =
