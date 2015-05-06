@@ -83,6 +83,7 @@ library
                  , containers
                  , vector
                  , time
+                 , wai
 
 executable         yesod-crud-example
     if flag(library-only)

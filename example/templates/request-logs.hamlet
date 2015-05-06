@@ -1,0 +1,24 @@
+<p>(In no particular order)
+<table .table .table-striped .table-bordered>
+  <tr>
+    <th>Method
+    <th>Secure?
+    <th>Version
+    <th>Path
+    <th>Query
+    <th>IP Addr
+  $forall (k,r) <- reqs
+    <tr .#{reqClass $ Wai.requestMethod r}>
+      <td>
+        <a href=@{parent $ CrudDeleteR k}>
+          <span .glyphicon .glyphicon-remove>
+        #{asText $ decodeUtf8 $ Wai.requestMethod r}
+      <td>
+        $if Wai.isSecure r
+          <span .glyphicon .glyphicon-ok-circle>
+        $else
+          <span .glyphicon .glyphicon-ban-circle>
+      <td>#{tshow $ Wai.httpVersion r}
+      <td>#{asText $ decodeUtf8 $ Wai.rawPathInfo r}
+      <td>#{asText $ decodeUtf8 $ Wai.rawQueryString r}
+      <td>#{tshow $ Wai.remoteHost r}

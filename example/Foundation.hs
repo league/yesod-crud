@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Foundation where
 
 import Import.NoFoundation
@@ -9,6 +10,8 @@ import Yesod.Default.Util   (addStaticContentExternal)
 import Yesod.Core.Types     (Logger)
 import qualified Yesod.Core.Unsafe as Unsafe
 import Yesod.Contrib.League.Crud
+import Yesod.Contrib.League.Crud.TVarMap
+import qualified Network.Wai as Wai
 
 -- | The foundation datatype for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -20,6 +23,7 @@ data App = App
     , appConnPool    :: ConnectionPool -- ^ Database connection pool.
     , appHttpManager :: Manager
     , appLogger      :: Logger
+    , appRequests    :: TVar (Map CrudTVarKey Wai.Request)
     }
 
 instance HasHttpManager App where
@@ -34,6 +38,32 @@ instance CrudTypes UserCrud where
 
 mkUserCrud :: a -> CrudSubsite UserCrud
 mkUserCrud _ = CrudSubsite UserCrud
+
+data LogCrud = LogCrud
+
+instance CrudTypes LogCrud where
+  type Site LogCrud = App
+  type ObjId LogCrud = CrudTVarKey
+  type Obj LogCrud = Wai.Request
+
+mkLogCrud :: a -> CrudSubsite LogCrud
+mkLogCrud _ = CrudSubsite LogCrud
+
+instance RenderMessage (CrudSubsite LogCrud) CrudMessage where
+  renderMessage _ _ CrudMsgEntity = "Log entry"
+  renderMessage _ _ CrudMsgEntities = "Log entries"
+  renderMessage _ _ m = defaultCrudMessage m
+
+instance Crud LogCrud where
+  crudDB = return $ crudTVarMapDefaults $
+           appRequests <$> liftHandlerT getYesod
+  crudShow = return . tshow
+  crudListWidget = do
+    reqs <- crudSelect
+    parent <- getRouter
+    let reqClass "POST" = asText "warning"
+        reqClass _ = ""
+    return $(widgetFile "request-logs")
 
 -- This is where we define all of the routes in our application. For a full
 -- explanation of the syntax, please see:
@@ -79,11 +109,10 @@ instance Yesod App where
     authRoute _ = Just $ AuthR LoginR
 
     -- Routes not requiring authentication.
-    isAuthorized (AuthR _) _ = return Authorized
-    isAuthorized FaviconR _ = return Authorized
-    isAuthorized RobotsR _ = return Authorized
-    -- Default to Authorized for now.
-    isAuthorized _ _ = return Authorized
+    isAuthorized _ _ = do
+      req <- reqWaiRequest <$> getRequest
+      void $ runCrudSite LogCrud LogCrudR $ crudInsert req
+      return Authorized
 
     -- This function creates static content files in the static folder
     -- and names them based on a hash of their content. This allows

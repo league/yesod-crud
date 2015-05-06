@@ -10,3 +10,5 @@
   <li>
     <a href=@{UserCrudR CrudListR}>Users
   <li>Emails
+  <li>
+    <a href=@{LogCrudR CrudListR}>Request logs
