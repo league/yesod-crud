@@ -39,6 +39,16 @@ instance CrudTypes UserCrud where
 mkUserCrud :: a -> CrudSubsite UserCrud
 mkUserCrud _ = CrudSubsite UserCrud
 
+data PubCrud = PubCrud UserId
+
+instance CrudTypes PubCrud where
+  type Site PubCrud = App
+  type ObjId PubCrud = PublicationId
+  type Obj PubCrud = Publication
+
+mkPubCrud :: a -> UserId -> CrudSubsite PubCrud
+mkPubCrud _ = CrudSubsite . PubCrud
+
 data LogCrud = LogCrud
 
 instance CrudTypes LogCrud where

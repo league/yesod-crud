@@ -9,6 +9,6 @@
 <ol>
   <li>
     <a href=@{UserCrudR CrudListR}>Users
-  <li>Emails
+    \ → click user name to view Publications
   <li>
     <a href=@{LogCrudR CrudListR}>Request logs

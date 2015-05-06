@@ -7,3 +7,4 @@
 / HomeR GET
 /users UserCrudR CrudSubsite-UserCrud mkUserCrud
 /logs  LogCrudR  CrudSubsite-LogCrud  mkLogCrud
+/pubs/#UserId PubCrudR CrudSubsite-PubCrud mkPubCrud

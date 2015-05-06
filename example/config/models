@@ -12,4 +12,13 @@ Email
     verkey Text Maybe
     UniqueEmail email
 
+Publication
+    title Text
+    url Text Maybe
+    year Int Maybe
+    created UTCTime
+    updated UTCTime
+    author UserId
+    deriving Show Eq
+
  -- By default this file is used in Model.hs (which is imported by Foundation.hs)

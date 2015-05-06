@@ -14,7 +14,8 @@ $else
             <span .glyphicon .glyphicon-pencil>
           <a href=@{UserCrudR $ CrudDeleteR k}>
             <span .glyphicon .glyphicon-remove>
-        <td>#{userIdent u}
+        <td>
+          <a href=@{PubCrudR k $ CrudListR}>#{userIdent u}
         <td>#{fromMaybe "—" $ userFullName u}
         <td>
           $if userIsAdmin u
