@@ -7,20 +7,19 @@ Maintainer: league@contrapunctus.net
 module Yesod.Contrib.League.Crud
        ( CrudTypes(..)
        , Crud(..)
-       , CrudData(..)
+       , CrudDB(..)
        , CrudForm
        , CrudHandler
        , CrudM
        , CrudMessage(..)
        , CrudPersist
-       , CrudPersistDefaults(..)
        , CrudSubsite(..)
        , CrudWidget
        , Ent
        , Route(..)
-       , crudPersist
        , crudRunDB
        , crudSelectList
+       , crudPersistDefaults
        , defaultCrudAlertMessage
        , defaultCrudMessage
        , getCrud
@@ -38,7 +37,7 @@ import Yesod.Contrib.League.Crud.Monad
 import Yesod.Contrib.League.Crud.Routes
 import Yesod.Contrib.League.Crud.Types
 
-class ( CrudData sub
+class ( CrudTypes sub
       , Yesod (Site sub)
       , Show (Obj sub)
       , Eq (Obj sub)
@@ -50,6 +49,26 @@ class ( CrudData sub
   -- * Minimal complete definition: you must override these
 
   crudMakeForm :: Maybe (Obj sub) -> CrudM sub (CrudForm sub)
+
+  crudDB :: CrudM sub (CrudDB sub)
+
+  ------------------------------------------------------------
+  crudSelect :: CrudM sub [Ent sub]
+  crudSelect = crudDB >>= crudSelect'
+
+  crudInsert :: Obj sub -> CrudM sub (ObjId sub)
+  crudInsert obj = crudDB >>= flip crudInsert' obj
+
+  crudGet :: ObjId sub -> CrudM sub (Maybe (Obj sub))
+  crudGet k = crudDB >>= flip crudGet' k
+
+  crudDelete :: ObjId sub -> CrudM sub ()
+  crudDelete k = crudDB >>= flip crudDelete' k
+
+  crudReplace :: ObjId sub -> Obj sub -> CrudM sub ()
+  crudReplace k obj = do
+    db <- crudDB
+    crudReplace' db k obj
 
   ------------------------------------------------------------
   -- * Operations on the object type

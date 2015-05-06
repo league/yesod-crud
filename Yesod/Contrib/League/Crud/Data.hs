@@ -4,12 +4,14 @@ import ClassyPrelude.Yesod
 import Yesod.Contrib.League.Crud.Types
 import Yesod.Contrib.League.Crud.Monad
 
-class CrudTypes sub => CrudData sub where
-  crudSelect :: CrudM sub [Ent sub]
-  crudInsert :: Obj sub -> CrudM sub (ObjId sub)
-  crudGet :: ObjId sub -> CrudM sub (Maybe (Obj sub))
-  crudReplace :: ObjId sub -> Obj sub -> CrudM sub ()
-  crudDelete :: ObjId sub -> CrudM sub ()
+data CrudDB sub =
+  CrudDB
+  { crudSelect' :: CrudM sub [Ent sub]
+  , crudInsert' :: Obj sub -> CrudM sub (ObjId sub)
+  , crudGet' :: ObjId sub -> CrudM sub (Maybe (Obj sub))
+  , crudReplace' :: ObjId sub -> Obj sub -> CrudM sub ()
+  , crudDelete' :: ObjId sub -> CrudM sub ()
+  }
 
 type CrudPersist sub =
   ( YesodPersist (Site sub)
@@ -34,21 +36,12 @@ crudSelectList
 crudSelectList filters opts =
   crudRunDB $ map entityPair <$> selectList filters opts
 
-data CrudPersistDefaults sub =
-  CrudPersistDefaults
-  { crudSelectP :: CrudM sub [Ent sub]
-  , crudInsertP :: Obj sub -> CrudM sub (ObjId sub)
-  , crudGetP :: ObjId sub -> CrudM sub (Maybe (Obj sub))
-  , crudReplaceP :: ObjId sub -> Obj sub -> CrudM sub ()
-  , crudDeleteP :: ObjId sub -> CrudM sub ()
-  }
-
-crudPersist :: CrudPersist sub => CrudPersistDefaults sub
-crudPersist =
-  CrudPersistDefaults
-  { crudSelectP = crudSelectList [] [LimitTo 1000]
-  , crudInsertP = crudRunDB . insert
-  , crudGetP = crudRunDB . get
-  , crudReplaceP = \k -> crudRunDB . replace k
-  , crudDeleteP = crudRunDB . delete
+crudPersistDefaults :: CrudPersist sub => CrudDB sub
+crudPersistDefaults =
+  CrudDB
+  { crudSelect' = crudSelectList [] [LimitTo 1000]
+  , crudInsert' = crudRunDB . insert
+  , crudGet' = crudRunDB . get
+  , crudReplace' = \k -> crudRunDB . replace k
+  , crudDelete' = crudRunDB . delete
   }
