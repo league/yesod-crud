@@ -2,7 +2,8 @@ User
     ident Text
     password Text Maybe
     UniqueUser ident
-    deriving Typeable
+    deriving Typeable Show Eq
+
 Email
     email Text
     user UserId Maybe

@@ -8,6 +8,7 @@ import Yesod.Auth.BrowserId (authBrowserId)
 import Yesod.Default.Util   (addStaticContentExternal)
 import Yesod.Core.Types     (Logger)
 import qualified Yesod.Core.Unsafe as Unsafe
+import Yesod.Contrib.League.Crud
 
 -- | The foundation datatype for your application. This can be a good place to
 -- keep settings and values requiring initialization before your application
@@ -23,6 +24,16 @@ data App = App
 
 instance HasHttpManager App where
     getHttpManager = appHttpManager
+
+data UserCrud = UserCrud
+
+instance CrudTypes UserCrud where
+  type Site UserCrud = App
+  type ObjId UserCrud = UserId
+  type Obj UserCrud = User
+
+mkUserCrud :: a -> CrudSubsite UserCrud
+mkUserCrud _ = CrudSubsite UserCrud
 
 -- This is where we define all of the routes in our application. For a full
 -- explanation of the syntax, please see:

@@ -4,4 +4,5 @@
 /favicon.ico FaviconR GET
 /robots.txt RobotsR GET
 
-/ HomeR GET POST
+/ HomeR GET
+/users UserCrudR CrudSubsite-UserCrud mkUserCrud

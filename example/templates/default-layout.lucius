@@ -1,0 +1,22 @@
+h1 {
+    text-align: center
+}
+header {
+    border-bottom: 2px solid #191970;
+    background: #f0f8ff;
+    padding-top: .5ex;
+}
+footer {
+    border-top: 2px solid #b22222;
+    background: #ffe4e1;
+    padding: .5ex 1em;
+}
+div#main {
+    margin-bottom: 3ex;
+}
+div#message {
+    border: 1px solid green;
+    background: #f5fffa;
+    padding: .5ex 1em;
+    margin: 1ex 0;
+}

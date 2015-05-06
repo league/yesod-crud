@@ -25,7 +25,10 @@ $newline never
   <body>
     <div class="container">
       <header>
+        <h1>
+          <a href=@{HomeR}>Yesod CRUD Example
       <div id="main" role="main">
+        <h2>#{pageTitle pc}
         ^{pageBody pc}
       <footer>
         #{appCopyright $ appSettings master}
