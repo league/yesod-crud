@@ -6,7 +6,7 @@ the `example` directory in the distribution.
 
 To begin, add subsites to your `routes` file, like these:
 
-```haskell
+```
 /users         UserCrudR  CrudSubsite-UserCrud  mkUserCrud
 /pubs/#UserId  PubCrudR   CrudSubsite-PubCrud   mkPubCrud
 ```
