@@ -4,6 +4,9 @@ This package helps you build administrative CRUD operations (Create, Retrieve,
 Update, Delete) into your web site, as Yesod subsites. There is a demo site in
 the `example` directory in the distribution.
 
+**Note:** this package is not yet on Hackage, but I am hosting the Haddock
+documentation at <http://contrapunctus.net/yesod-crud/0.1.1/>
+
 To begin, add subsites to your `routes` file, like these:
 
 ```
