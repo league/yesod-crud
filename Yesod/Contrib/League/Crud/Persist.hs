@@ -1,8 +1,18 @@
+{-|
+Module: Yesod.Contrib.League.Crud.Persist
+Description: Representing CRUD entities using Persistent
+Copyright: ©2015 Christopher League
+Maintainer: league@contrapunctus.net
+
+This module provides default database operations using 'Database.Persist'.
+Start out by setting @crudDB = return crudPersistDefaults@ and then you can
+override any operations within your 'Crud' instance.
+-}
 module Yesod.Contrib.League.Crud.Persist
-       ( crudRunDB
-       , crudPersistDefaults
-       , crudEntPair
+       ( crudPersistDefaults
+       , crudRunDB
        , crudSelectList
+       , crudEntPair
        ) where
 
 import ClassyPrelude
@@ -19,12 +29,16 @@ type CrudPersist sub =
   , ObjId sub ~ Key (Obj sub)
   )
 
+-- |Run a database query within the 'CrudM' monad.
 crudRunDB :: CrudPersist sub => YesodDB (Site sub) a -> CrudM sub a
 crudRunDB = liftHandlerT . runDB
 
+-- |Helper function to convert a Persist 'Entity' into a plain pair.
 crudEntPair :: Entity t -> (Key t, t)
 crudEntPair (Entity k v) = (k, v)
 
+-- |Run a 'selectList' on the CRUD type, using the given filters and options.
+-- Return the entities as a plain pair of 'ObjId' and 'Obj'.
 crudSelectList
   :: CrudPersist sub
      => [Filter (Obj sub)]
@@ -34,6 +48,9 @@ crudSelectList
 crudSelectList filters opts =
   crudRunDB $ map crudEntPair <$> selectList filters opts
 
+-- |Retrieve a record of database operations that use 'Database.Persist'. By
+-- default, the select is limited to returning 1000 entities, so we don't end
+-- up retrieving entire large tables.
 crudPersistDefaults :: CrudPersist sub => CrudDB sub
 crudPersistDefaults =
   CrudDB

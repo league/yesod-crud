@@ -1,4 +1,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, RecordWildCards #-}
+{-|
+Module: Yesod.Contrib.League.Crud.TVarMap
+Description: Representing CRUD entities in memory
+Copyright: ©2015 Christopher League
+Maintainer: league@contrapunctus.net
+
+This is a proof of concept for implementing CRUD operations that are not based
+on Database.Persist. It uses a 'TVar' and a 'Map' from 'UUID' keys to the CRUD
+entity.
+-}
 module Yesod.Contrib.League.Crud.TVarMap
        ( CrudTVarKey
        , CrudTVarMap
@@ -12,6 +22,8 @@ import           System.Random
 import           Yesod.Contrib.League.Crud
 import           Yesod.Core
 
+-- |The key type. A wrapper for 'UUID' that implements all the necessary
+-- classes, including 'PathPiece'.
 newtype CrudTVarKey =
   CrudTKey { crudUUID :: UUID }
   deriving (Eq, Ord, Read, Show, Random)
@@ -20,8 +32,10 @@ instance PathPiece CrudTVarKey where
   toPathPiece = tshow . crudUUID
   fromPathPiece = fmap CrudTKey . readMay
 
+-- |Synonym for the map type.
 type CrudTVarMap sub = Map CrudTVarKey (Obj sub)
 
+-- |Retrieve a record of database operations for using a 'CrudTVarMap'.
 crudTVarMapDefaults ::
   ( ObjId sub ~ CrudTVarKey )
   => CrudM sub (TVar (CrudTVarMap sub))
