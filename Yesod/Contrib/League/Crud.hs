@@ -483,8 +483,8 @@ instance MonadBaseControl IO (CrudM sub) where
   restoreM = CrudM . restoreM
 
 -- |Retrieve the value of the foundation type. This is needed if your CRUD
--- paths contain parameters, such as @/customer/31/donut/15/update@. The 31 is
--- stored in the foundation, and the 15 in the subsite route.
+-- paths contain parameters, such as @\/customer\/31\/donut\/15\/update@. The
+-- 31 is stored in the foundation, and the 15 in the subsite route.
 getCrud :: CrudM sub sub
 getCrud = envSub <$> CrudM ask
 
