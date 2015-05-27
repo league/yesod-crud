@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables, Rank2Types #-}
 {-|
 Module: Yesod.Contrib.League.Crud.Persist
 Description: Representing CRUD entities using Persistent
@@ -13,11 +14,13 @@ module Yesod.Contrib.League.Crud.Persist
        , crudRunDB
        , crudSelectList
        , crudEntPair
+       , CrudPersistSort(..)
        ) where
 
 import ClassyPrelude
 import Database.Persist
 import Yesod.Contrib.League.Crud
+import Yesod.Contrib.League.Crud.Sort
 import Yesod.Core
 import Yesod.Persist
 
@@ -27,7 +30,15 @@ type CrudPersist sub =
   , PersistEntityBackend (Obj sub) ~ YesodPersistBackend (Site sub)
   , PersistQuery (YesodPersistBackend (Site sub))
   , ObjId sub ~ Key (Obj sub)
+  , Crud sub
+  , CrudPersistSort sub
   )
+
+class CrudPersistSort sub where
+  crudSelectOpt :: Sort (SortC sub) -> CrudM sub (SelectOpt (Obj sub))
+
+instance SortC sub ~ () => CrudPersistSort sub where
+  crudSelectOpt _ = fail "No sort criteria"
 
 -- |Run a database query within the 'CrudM' monad.
 crudRunDB :: CrudPersist sub => YesodDB (Site sub) a -> CrudM sub a
@@ -54,9 +65,23 @@ crudSelectList filters opts =
 crudPersistDefaults :: CrudPersist sub => CrudDB sub
 crudPersistDefaults =
   CrudDB
-  { crudSelect' = crudSelectList [] [LimitTo 1000]
+  { crudSelect' = crudPersistSelect
   , crudInsert' = crudRunDB . insert
   , crudGet' = crudRunDB . get
   , crudReplace' = \k -> crudRunDB . replace k
   , crudDelete' = crudRunDB . delete
   }
+
+crudPersistSelect :: CrudPersist sub => CrudM sub [Ent sub]
+crudPersistSelect = do
+  sorts <- getSorts
+  $(logInfo) $ tshow sorts
+  opts <- mapM crudSelectOpt $ sortsList sorts
+  crudSelectList [] opts
+
+----applySorts :: CrudPersist sub => [Sort (SortC sub) -> SelectOpt (Obj sub)
+--applySorts :: forall sub. CrudPersist sub => Sorts (SortC sub) -> CrudM sub [SelectOpt (Obj sub)]
+--applySorts (Sorts s) = mapM g s
+--  where g :: Sort (SortC sub) -> CrudM sub (SelectOpt (Obj sub))
+--        g (Sort c True) = return $ crudSelectOpts (Asc :: EntityField (Obj sub) t -> SelectOpt (Obj sub)) c
+--        g (Sort c False) = return $ crudSelectOpts Desc c

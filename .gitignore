@@ -1,3 +1,4 @@
 /dist/
 /example/yesod-crud-example.sqlite3-shm
 /example/yesod-crud-example.sqlite3-wal
+/cabal.sandbox.config

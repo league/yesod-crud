@@ -109,6 +109,9 @@ import Yesod.Form
 -- |Define the types used by your CRUD subsite.
 class ( Eq (ObjId sub)
       , PathPiece (ObjId sub)
+      , Bounded (SortC sub)
+      , Show (SortC sub)
+      , Enum (SortC sub)
       ) => CrudTypes sub where
 
   -- |The site's foundation type
@@ -119,6 +122,10 @@ class ( Eq (ObjId sub)
 
   -- |The type of the objects themselves
   type Obj sub :: *
+
+  -- |The type of sort criteria
+  type SortC sub :: *
+  type SortC sub = ()
 
 -- |The foundation type for a CRUD subsite, wrapped around your own type /sub/
 -- that determines the entity and carries any contextual data from the route.
