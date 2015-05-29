@@ -1,22 +1,27 @@
 {-# LANGUAGE Rank2Types #-}
-module Yesod.Contrib.League.Crud.Sort where
+module Yesod.Contrib.League.Crud.Sort
+       ( Sort(..)
+       , Sorts(..)
+       , SortC
+       , ToEntityField
+       , cancelLink
+       , cancelSort
+       , getSorts
+       , isSortedBy
+       , sortIndicator
+       , sortToSelectOpt
+       , sortsQuery
+       , sortsToSelectOpts
+       , toggleLink
+       , toggleSort
+       ) where
 
 import ClassyPrelude
 import Data.String.Utils (split)
 import Database.Persist
-import Text.Blaze (ToMarkup)
 import Yesod.Contrib.League.Crud
 import Yesod.Core
-
--- could be added to Safe library
-toEnumMay :: (Enum a, Bounded a) => Int -> Maybe a
-toEnumMay i =
-  let r = toEnum i
-      mx = maxBound `asTypeOf` r
-      mn = minBound `asTypeOf` r
-  in if i >= fromEnum mn && i <= fromEnum mx
-  then Just r
-  else Nothing
+import Safe (toEnumMay)
 
 data Sort k =
   Sort { sortKey :: k
