@@ -14,13 +14,11 @@ module Yesod.Contrib.League.Crud.Persist
        , crudRunDB
        , crudSelectList
        , crudEntPair
-       , CrudPersistSort(..)
        ) where
 
 import ClassyPrelude
 import Database.Persist
 import Yesod.Contrib.League.Crud
-import Yesod.Contrib.League.Crud.Sort
 import Yesod.Core
 import Yesod.Persist
 
@@ -31,14 +29,7 @@ type CrudPersist sub =
   , PersistQuery (YesodPersistBackend (Site sub))
   , ObjId sub ~ Key (Obj sub)
   , Crud sub
-  , CrudPersistSort sub
   )
-
-class CrudPersistSort sub where
-  crudSelectOpt :: Sort (SortC sub) -> CrudM sub (SelectOpt (Obj sub))
-
-instance SortC sub ~ () => CrudPersistSort sub where
-  crudSelectOpt _ = fail "No sort criteria"
 
 -- |Run a database query within the 'CrudM' monad.
 crudRunDB :: CrudPersist sub => YesodDB (Site sub) a -> CrudM sub a
@@ -73,11 +64,7 @@ crudPersistDefaults =
   }
 
 crudPersistSelect :: CrudPersist sub => CrudM sub [Ent sub]
-crudPersistSelect = do
-  sorts <- getSorts
-  $(logInfo) $ tshow sorts
-  opts <- mapM crudSelectOpt $ sortsList sorts
-  crudSelectList [] opts
+crudPersistSelect = crudSelectList [] []
 
 ----applySorts :: CrudPersist sub => [Sort (SortC sub) -> SelectOpt (Obj sub)
 --applySorts :: forall sub. CrudPersist sub => Sorts (SortC sub) -> CrudM sub [SelectOpt (Obj sub)]

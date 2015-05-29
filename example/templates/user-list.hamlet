@@ -4,9 +4,15 @@ $else
   <table .table .table-striped .table-bordered>
     <tr>
       <th .col-md-1>
-      <th>User name
-      <th>Full name
-      <th>Admin
+      <th>
+        <a href=@?{toggleLink UserSortUserName True sorts r}>User name
+        ^{sortIndicator UserSortUserName sorts r}
+      <th>
+        <a href=@?{toggleLink UserSortFullName True sorts r}>Full name
+        ^{sortIndicator UserSortFullName sorts r}
+      <th>
+        <a href=@?{toggleLink UserSortIsAdmin True sorts r}>Admin
+        ^{sortIndicator UserSortIsAdmin sorts r}
     $forall (k,u) <- users
       <tr>
         <td .col-md-1 style="text-align:right">

@@ -1,10 +1,11 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, Rank2Types #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Handler.UserCrud where
 
 import Import
 import Yesod.Contrib.League.Crud
 import Yesod.Contrib.League.Crud.Persist
+import Yesod.Contrib.League.Crud.Sort
 
 instance RenderMessage (CrudSubsite UserCrud) CrudMessage where
   renderMessage _ _ CrudMsgEntity = "User"
@@ -13,8 +14,25 @@ instance RenderMessage (CrudSubsite UserCrud) CrudMessage where
   renderMessage _ _ CrudMsgLinkCreate = "Create a user"
   renderMessage _ _ m = defaultCrudMessage m
 
+data UserSort
+  = UserSortUserName
+  | UserSortFullName
+  | UserSortIsAdmin
+    deriving (Eq, Show, Enum, Bounded)
+
+userSortField :: ToEntityField UserSort User
+userSortField s f = case s of
+  UserSortUserName -> f UserIdent
+  UserSortFullName -> f UserFullName
+  UserSortIsAdmin  -> f UserIsAdmin
+
 instance Crud UserCrud where
   crudDB = return crudPersistDefaults
+
+  crudSelect = do
+    sorts <- getSorts
+    $(logInfo) $ tshow sorts
+    crudSelectList [] $ sortsToSelectOpts userSortField sorts
 
   crudShow = return . userIdent
 
@@ -28,6 +46,8 @@ instance Crud UserCrud where
     <*> areq checkBoxField "Administrator" (userIsAdmin <$> uOpt)
 
   crudListWidget = do
+    r <- getRouter
+    sorts <- getSorts
     users <- crudSelect
     createW <- crudCreateWidget
     return $(widgetFile "user-list")
