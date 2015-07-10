@@ -51,3 +51,11 @@ instance Crud UserCrud where
     users <- crudSelect
     createW <- crudCreateWidget
     return $(widgetFile "user-list")
+
+  crudViewWidget (_, u) = do
+    return
+      [whamlet|
+       <h3>#{userIdent u}
+       $maybe n <- userFullName u
+         <p>This is the page about #{n}.
+      |]
