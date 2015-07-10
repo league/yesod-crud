@@ -19,6 +19,7 @@ resourcesCrudSubsite =
   [parseRoutes|
   /                  CrudListR     GET
   /create            CrudCreateR   GET POST
+  /view/#ObjId-sub   CrudViewR     GET
   /update/#ObjId-sub CrudUpdateR   GET POST
   /delete/#ObjId-sub CrudDeleteR   GET POST
   |]

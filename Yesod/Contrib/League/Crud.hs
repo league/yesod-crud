@@ -280,6 +280,7 @@ class ( CrudTypes sub
               #{s}
               <a href=@{r2p $ CrudUpdateR k}>#{mr CrudMsgLinkUpdate}
               <a href=@{r2p $ CrudDeleteR k}>#{mr CrudMsgLinkDelete}
+              <a href=@{r2p $ CrudViewR k}>#{mr CrudMsgLinkView}
       <p>
         <a href=@{r2p CrudCreateR}>#{mr CrudMsgLinkCreate}
       |]
@@ -311,6 +312,16 @@ class ( CrudTypes sub
     form <- crudMakeForm Nothing
     widgetEnc <- liftHandlerT $ generateFormPost form
     crudFormWidget CrudCreateR widgetEnc
+
+  -- | View entity details
+  crudViewWidget
+    :: Ent sub -> CrudM sub (CrudWidget sub)
+
+  crudViewWidget ent = do
+    objW <- crudShowHtml $ snd ent
+    return
+      [whamlet|<p>^{objW}
+      |]
 
   -- |Creates a widget to confirm deletion of an object. Override this if you
   -- want to have a more sophisticated confirmation warning (such as showing
@@ -388,6 +399,21 @@ class ( CrudTypes sub
            crudNextPage (Just objId) >>= redirect
       _ -> pure ()
     crudFormLayout CrudCreateR (w, enc)
+
+  -- |Handler for @GET@ on @CrudViewR@, an object's details  request. It displays the
+  -- object and employs an empty Yesod form for return.
+  getCrudViewR :: ObjId sub -> CrudHandler sub Html
+  getCrudViewR objId = runCrudSubsite $ do
+    mr <- getMessenger
+    obj <- crudGet objId >>= maybe404
+    objW <- crudViewWidget (objId, obj)
+    r2p <- getRouter
+    crudLayout $ do
+      setTitle . toHtml . mr . CrudMsgTitleView $ mr CrudMsgEntity
+      [whamlet|
+         ^{objW}
+         <p><a href=@{r2p CrudListR}>#{mr CrudMsgViewLinkNext}
+       |]
 
   -- |Handler for @GET@ on @CrudDeleteR@, a deletion request. It displays the
   -- object and employs an empty Yesod form for its CSRF token.
@@ -544,9 +570,12 @@ data CrudMessage
   | CrudMsgLinkCreate           -- ^The link text leading to the create page
   | CrudMsgLinkDelete           -- ^The link text leading to the delete page
   | CrudMsgLinkUpdate           -- ^The link text leading to the update form
+  | CrudMsgLinkView             -- ^The link text leading to the details page
   | CrudMsgTitleCreate Text     -- ^The title "Create [entity]"
   | CrudMsgTitleDelete Text     -- ^The title "Delete [entity]"
   | CrudMsgTitleUpdate Text     -- ^The title "Update [entity]"
+  | CrudMsgTitleView Text       -- ^The title "Show [entity]"
+  | CrudMsgViewLinkNext         -- ^The link text to return from object details page
 
 -- |Basic conversion of CRUD messages to English text.
 defaultCrudMessage :: CrudMessage -> Text
@@ -563,10 +592,13 @@ defaultCrudMessage m = case m of
   CrudMsgConfirmDelete  obj  -> "Really delete " <> obj <> "?"
   CrudMsgLinkCreate          -> "create"
   CrudMsgLinkDelete          -> "delete"
+  CrudMsgLinkView            -> "view"
   CrudMsgLinkUpdate          -> "edit"
   CrudMsgTitleCreate    noun -> "Create " <> noun
   CrudMsgTitleDelete    noun -> "Delete " <> noun
   CrudMsgTitleUpdate    noun -> "Update " <> noun
+  CrudMsgTitleView      noun -> "Show " <> noun
+  CrudMsgViewLinkNext        -> "Back"
 
 -- |Choose and render an appropriate alert message after a CRUD operation.
 defaultCrudAlertMessage
@@ -588,6 +620,7 @@ routeToAlertMessage route obj = case route of
   CrudCreateR     -> CrudMsgAlertCreated obj
   (CrudUpdateR _) -> CrudMsgAlertUpdated obj
   (CrudDeleteR _) -> CrudMsgAlertDeleted obj
+  (CrudViewR _)   -> CrudMsgAlertNoChanges obj
   CrudListR       -> CrudMsgAlertNoChanges obj
 
 routeToTitle :: Route (CrudSubsite sub) -> Text -> CrudMessage
@@ -595,6 +628,7 @@ routeToTitle route obj = case route of
   CrudCreateR     -> CrudMsgTitleCreate obj
   (CrudUpdateR _) -> CrudMsgTitleUpdate obj
   (CrudDeleteR _) -> CrudMsgTitleDelete obj
+  (CrudViewR _) -> CrudMsgTitleView obj
   CrudListR       -> CrudMsgEntities
 
 -- |Retrieve the message translator and renderer in the CRUD monad. Uses
@@ -614,11 +648,13 @@ instance CrudTypes sub => RenderRoute (CrudSubsite sub) where
   data Route (CrudSubsite sub)
     = CrudListR
     | CrudCreateR
+    | CrudViewR (ObjId sub)
     | CrudUpdateR (ObjId sub)
     | CrudDeleteR (ObjId sub)
 
   renderRoute CrudListR = ([], [])
   renderRoute CrudCreateR = (["create"], [])
+  renderRoute (CrudViewR k) = (["view", toPathPiece k], [])
   renderRoute (CrudUpdateR k) = (["update", toPathPiece k], [])
   renderRoute (CrudDeleteR k) = (["delete", toPathPiece k], [])
 
@@ -629,6 +665,7 @@ deriving instance Show (ObjId sub) => Show (Route (CrudSubsite sub))
 instance CrudTypes sub => ParseRoute (CrudSubsite sub) where
   parseRoute ([           ], _) = Just CrudListR
   parseRoute (["create"   ], _) = Just CrudCreateR
+  parseRoute (["view", k], _) = CrudViewR <$> fromPathPiece k
   parseRoute (["update", k], _) = CrudUpdateR <$> fromPathPiece k
   parseRoute (["delete", k], _) = CrudDeleteR <$> fromPathPiece k
   parseRoute _ = Nothing
