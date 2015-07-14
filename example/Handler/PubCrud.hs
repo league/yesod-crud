@@ -52,6 +52,7 @@ instance Crud PubCrud where
     PubCrud userId <- getCrud
     user <- crudRunDB $ get404 userId
     $(logInfo) $ "Loading pubs for " <> userName user
-    crudLayout $ do
+    res<- crudLayout $ do
       setTitle $ toHtml $ "Publications for " <> userName user
       lw
+    return $ toTypedContent res
