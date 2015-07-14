@@ -363,28 +363,30 @@ class ( CrudTypes sub
   -- |Handler for @GET@ on the list route @CrudListR@, to display a list of all
   -- objects. Primarily uses 'crudListWidget' and 'crudLayout', but also sets a
   -- title based on 'CrudMsgEntities'.
-  getCrudListR :: CrudHandler sub Html
+  getCrudListR :: CrudHandler sub TypedContent
   getCrudListR = runCrudSubsite $ do
     mr <- getMessenger
     lw <- crudListWidget
-    crudLayout $ do
+    res <- crudLayout $ do
       setTitle . toHtml $ mr CrudMsgEntities
       lw
+    return $ toTypedContent res
 
   -- |Handler for @GET@ on the creation form @CrudCreateR@, to display an empty
   -- form. Primarily uses 'crudMakeForm' and 'crudFormLayout'.
-  getCrudCreateR :: CrudHandler sub Html
+  getCrudCreateR :: CrudHandler sub TypedContent
   getCrudCreateR = runCrudSubsite $ do
     form <- crudMakeForm Nothing
     widgetEnc <- liftHandlerT $ generateFormPost form
-    crudFormLayout CrudCreateR widgetEnc
+    res <- crudFormLayout CrudCreateR widgetEnc
+    return $ toTypedContent res
 
   -- |Handler for @POST@ on @CrudCreateR@, to create a new object. On success,
   -- it inserts the object and displays an alert on the next page. If the form
   -- validation fails, it displays the form again with errors. (If the database
   -- insertion itself fails, it still moves on to the next page and displays
   -- the exception as an alert.)
-  postCrudCreateR :: CrudHandler sub Html
+  postCrudCreateR :: CrudHandler sub TypedContent
   postCrudCreateR = runCrudSubsite $ do
     form <- crudMakeForm Nothing
     ((result, w), enc) <- liftHandlerT $ runFormPost form
@@ -398,43 +400,46 @@ class ( CrudTypes sub
            crudAlert CrudCreateR (Right obj)
            crudNextPage (Just objId) >>= redirect
       _ -> pure ()
-    crudFormLayout CrudCreateR (w, enc)
+    res <- crudFormLayout CrudCreateR (w, enc)
+    return $ toTypedContent res
 
   -- |Handler for @GET@ on @CrudViewR@, an object's details  request. It displays the
   -- object and employs an empty Yesod form for return.
-  getCrudViewR :: ObjId sub -> CrudHandler sub Html
+  getCrudViewR :: ObjId sub -> CrudHandler sub TypedContent
   getCrudViewR objId = runCrudSubsite $ do
     mr <- getMessenger
     obj <- crudGet objId >>= maybe404
     objW <- crudViewWidget (objId, obj)
     r2p <- getRouter
-    crudLayout $ do
+    res <- crudLayout $ do
       setTitle . toHtml . mr . CrudMsgTitleView $ mr CrudMsgEntity
       [whamlet|
          ^{objW}
          <p><a href=@{r2p CrudListR}>#{mr CrudMsgViewLinkNext}
        |]
+    return $ toTypedContent res
 
   -- |Handler for @GET@ on @CrudDeleteR@, a deletion request. It displays the
   -- object and employs an empty Yesod form for its CSRF token.
-  getCrudDeleteR :: ObjId sub -> CrudHandler sub Html
+  getCrudDeleteR :: ObjId sub -> CrudHandler sub TypedContent
   getCrudDeleteR objId = runCrudSubsite $ do
     mr <- getMessenger
     r2p <- getRouter
     obj <- crudGet objId >>= maybe404
     (tokenW, enc) <- generateFormPost . renderDivs $ pure ()
     confirmW <- crudDeleteWidget (objId, obj)
-    crudLayout $ do
+    res <- crudLayout $ do
       setTitle . toHtml . mr . CrudMsgTitleDelete $ mr CrudMsgEntity
       [whamlet|
        <form method=post action=@{r2p $ CrudDeleteR objId} enctype=#{enc}>
          ^{tokenW}
          ^{confirmW}
        |]
+    return $ toTypedContent res
 
   -- |Handler for @POST@ on @CrudDeleteR@, confirming a deletion request. It
   -- displays the result as an alert on the next page.
-  postCrudDeleteR :: ObjId sub -> CrudHandler sub Html
+  postCrudDeleteR :: ObjId sub -> CrudHandler sub TypedContent
   postCrudDeleteR objId = runCrudSubsite $ do
     obj <- crudGet objId >>= maybe404
     crudDelete objId
@@ -444,19 +449,20 @@ class ( CrudTypes sub
   -- |Handler for @GET@ on @CrudUpdateR@, to display a form filled out with an
   -- existing object. Most of the work is done by 'crudGet', 'crudMakeForm',
   -- and 'crudFormLayout'.
-  getCrudUpdateR :: ObjId sub -> CrudHandler sub Html
+  getCrudUpdateR :: ObjId sub -> CrudHandler sub TypedContent
   getCrudUpdateR objId = runCrudSubsite $ do
     obj <- crudGet objId >>= maybe404
     form <- crudMakeForm (Just obj)
     widgetEnc <- liftHandlerT $ generateFormPost form
-    crudFormLayout (CrudUpdateR objId) widgetEnc
+    res <- crudFormLayout (CrudUpdateR objId) widgetEnc
+    return $ toTypedContent res
 
   -- |Handler for @POST@ on @CrudUpdateR@, to update an object. Guards against
   -- updating an object that has not been changed, as detected by 'crudEq'. If
   -- the form validation fails, it displays the form again with errors. (If the
   -- database update itself fails, it still moves on to the next page and
   -- displays the exception as an alert.)
-  postCrudUpdateR :: ObjId sub -> CrudHandler sub Html
+  postCrudUpdateR :: ObjId sub -> CrudHandler sub TypedContent
   postCrudUpdateR objId = runCrudSubsite $ do
     obj <- crudGet objId >>= maybe404
     form <- crudMakeForm (Just obj)
@@ -474,7 +480,8 @@ class ( CrudTypes sub
             when (isRight unitOrExn) $
               crudNextPage (Just objId) >>= redirect
       _ -> pure ()
-    crudFormLayout (CrudUpdateR objId) (w, enc)
+    res <- crudFormLayout (CrudUpdateR objId) (w, enc)
+    return $ toTypedContent res
 
 maybe404 :: MonadHandler m => Maybe a -> m a
 maybe404 = maybe notFound return
