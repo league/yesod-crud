@@ -4,9 +4,6 @@ This package helps you build administrative CRUD operations (Create, Retrieve,
 Update, Delete) into your web site, as Yesod subsites. There is a demo site in
 the `example` directory in the distribution.
 
-**Note:** this package is not yet on Hackage, but I am hosting the Haddock
-documentation at <http://contrapunctus.net/yesod-crud/0.1.1/>
-
 To begin, add subsites to your `routes` file, like these:
 
 ```
@@ -44,10 +41,10 @@ instance CrudTypes PubCrud where
   type Obj PubCrud = Publication
 ```
 
-The above generally must go within the Foundation.hs of a scaffolded site,
+The above generally must go within the `Foundation.hs` of a scaffolded site,
 because it relies on the `App` type, and is in turn used in the routes file.
 The remaining CRUD operations can be defined elsewhere and then imported into
-Application.hs for the dispatcher to access.
+`Application.hs` for the dispatcher to access.
 
 ```haskell
 instance RenderMessage (CrudSubsite UserCrud) CrudMessage where
