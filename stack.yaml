@@ -1,0 +1,9 @@
+flags:
+  yesod-crud-example:
+    library-only: false
+    dev: false
+packages:
+- '.'
+- example/
+extra-deps: []
+resolver: lts-3.0
