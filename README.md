@@ -4,6 +4,8 @@ This package helps you build administrative CRUD operations (Create, Retrieve,
 Update, Delete) into your web site, as Yesod subsites. There is a demo site in
 the `example` directory in the distribution.
 
+![Screenshot from the example CRUD subsite](example/crud-example-users.png)
+
 To begin, add subsites to your `routes` file, like these:
 
 ```
