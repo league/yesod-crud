@@ -6,4 +6,4 @@ packages:
 - '.'
 - example/
 extra-deps: []
-resolver: lts-3.0
+resolver: lts-5.12
