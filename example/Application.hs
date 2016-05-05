@@ -4,6 +4,7 @@ module Application
     , appMain
     , develMain
     , makeFoundation
+    , makeLogWare
     -- * for DevelMain
     , getApplicationRepl
     , shutdownApp
@@ -17,6 +18,7 @@ import Database.Persist.Sqlite              (createSqlitePool, runSqlPool,
                                              sqlDatabase, sqlPoolSize)
 import Import
 import Language.Haskell.TH.Syntax           (qLocation)
+import Network.Wai (Middleware)
 import Network.Wai.Handler.Warp             (Settings, defaultSettings,
                                              defaultShouldDisplayException,
                                              runSettings, setHost,
@@ -94,6 +96,19 @@ makeApplication foundation = do
     -- Create the WAI application and apply middlewares
     appPlain <- toWaiAppPlain foundation
     return $ logWare $ defaultMiddlewaresNoLogging appPlain
+
+makeLogWare :: App -> IO Middleware
+makeLogWare foundation =
+    mkRequestLogger def
+        { outputFormat =
+            if appDetailedRequestLogging $ appSettings foundation
+                then Detailed True
+                else Apache
+                        (if appIpFromHeader $ appSettings foundation
+                            then FromFallback
+                            else FromSocket)
+        , destination = Logger $ loggerSet $ appLogger foundation
+        }
 
 -- | Warp settings for the given foundation value.
 warpSettings :: App -> Settings

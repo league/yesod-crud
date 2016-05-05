@@ -120,7 +120,7 @@ test-suite test
 
     build-depends: base
                  , yesod-crud-example
-                 , yesod-test >= 1.4.3 && < 1.5
+                 , yesod-test >= 1.4.3
                  , yesod-core
                  , yesod
                  , persistent
