@@ -28,7 +28,7 @@ mkPubCrud _ = CrudSubsite . PubCrud
 ```
 
 Next, define the type families on which these will operate. The simplest case
-is that 'ObjId' is a Persistent database 'Key' and 'Obj' is one of your model
+is that `ObjId` is a Persistent database `Key` and `Obj` is one of your model
 types, but yesod-crud supports other types and non-Persistent databases too.
 
 ```haskell
