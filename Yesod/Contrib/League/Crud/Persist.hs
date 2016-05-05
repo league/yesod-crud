@@ -16,7 +16,7 @@ module Yesod.Contrib.League.Crud.Persist
        , crudEntPair
        ) where
 
-import ClassyPrelude
+import ClassyPrelude hiding (delete)
 import Database.Persist
 import Yesod.Contrib.League.Crud
 import Yesod.Core
