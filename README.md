@@ -1,5 +1,7 @@
 # yesod-crud
 
+[![Hackage](https://img.shields.io/hackage/v/yesod-crud.svg?maxAge=2592000?style=flat-square)]() [![Hackage-Deps](https://img.shields.io/hackage-deps/v/yesod-crud.svg?maxAge=2592000?style=flat-square)]()
+
 This package helps you build administrative CRUD operations (Create, Retrieve,
 Update, Delete) into your web site, as Yesod subsites. There is a demo site in
 the `example` directory in the distribution.
